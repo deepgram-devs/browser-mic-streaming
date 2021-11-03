@@ -1,138 +1,50 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Browser Mic Deepgram Demo</title>
-    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/styles/default.min.css" />
-    <style>
-      body {
-        font-family: sans-serif;
-        padding: 1rem;
-      }
-      #status {
-        margin-bottom: 1rem;
-        display: block;
-      }
-      #app {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        grid-gap: 2em;
-      }
-      #transcript {
-        background: #f0f0f0;
-        padding: 1rem;
-        margin-top: 0;
-      }
-      pre {
-        margin-top: 0;
-      }
-      @media screen and (max-width: 800px) {
-        body {
-          grid-template-columns: 1rem;
-        }
-      }
-    </style>
+    <meta content="text/html;charset=utf-8" http-equiv="Content-Type" />
   </head>
   <body>
-    <h1>Sending Mic to Deepgram Demo</h1>
-    <code class="language-json" id="status">{ connected: false }</code>
-    <div id="app">
-      <p id="transcript"></p>
-      <pre><code class="language-html">&lt;p id=&quot;transcript&quot;&gt;&lt;/p&gt;
-
-&lt;script&gt;
-// Get mic
-navigator.mediaDevices.getUserMedia({ audio: true }).then(stream =&gt; {
-  const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-
-  // Establish websocket connection
-  const socket = new WebSocket(
-    'wss://api.deepgram.com/v1/listen',
-    ['token', 'YOUR API TOKEN HERE']
-  )
-
-  // Once opened, start sending data
-  socket.onopen = () =&gt; {
-    console.log({ message: 'socket opened' })
-    mediaRecorder.addEventListener('dataavailable', async event =&gt; {
-      if(socket.readyState == socket.OPEN) {
-        if(event.data.size &gt; 0) {
-          socket.send(event.data)
-        }
-      }
-    })
-    mediaRecorder.start(1000)
-  }
-
-  // When we receive data from Deepgram...
-  socket.onmessage = message =&gt; {
-    const received = JSON.parse(message.data)
-    // See all responses in the console
-    console.log({ received })
-
-    // If there is a transcript and it's marked as is_final, add to transcript paragraph
-    const transcript = received.channel.alternatives[0].transcript
-    if(transcript &amp;&amp; received.is_final) {
-      document.querySelector('#transcript').textContent += transcript + ' '
-    }
-  }
-
-  socket.onclose = () =&gt; {
-    console.log({ message: 'socket closed' })
-  }
-
-  socket.onerror = error =&gt; {
-    console.log({ error })
-  }
-})
-&lt;/script&gt;</code></pre>
-    </div>
-    <script src="//cdnjs.cloudflare.com/ajax/libs/highlight.js/11.3.1/highlight.min.js"></script>
+    <p id="status">Not Connected</p>
+    <p id="transcript"></p>
     <script>
-      hljs.highlightAll()
-    </script>
-    <script>
-      // Get mic
-      navigator.mediaDevices.getUserMedia({ audio: true }).then(stream => {
-        const mediaRecorder = new MediaRecorder(stream, { mimeType: 'audio/webm' })
-
-        // Establish websocket connection
-        const socket = new WebSocket('wss://api.deepgram.com/v1/listen', ['token', 'YOUR_TOKEN_HERE'])
-
-        // Once opened, start sending data
+      navigator.mediaDevices.getUserMedia({ audio: true }).then((stream) => {
+        console.log({ stream })
+        if (!MediaRecorder.isTypeSupported('audio/webm'))
+          return alert('Browser not supported')
+        const mediaRecorder = new MediaRecorder(stream, {
+          mimeType: 'audio/webm',
+        })
+        const socket = new WebSocket('wss://api.deepgram.com/v1/listen', [
+          'token',
+          'YOUR_KEY_HERE',
+        ])
         socket.onopen = () => {
-          console.log({ message: 'socket opened' })
-          document.querySelector('#status').textContent = '{ connected: true }'
-          mediaRecorder.addEventListener('dataavailable', async event => {
-            if (socket.readyState == socket.OPEN) {
-              if (event.data.size > 0) {
-                socket.send(event.data)
-              }
+          document.querySelector('#status').textContent = 'Connected'
+          console.log({ event: 'onopen' })
+          mediaRecorder.addEventListener('dataavailable', async (event) => {
+            if (event.data.size > 0) {
+              socket.send(event.data)
             }
           })
           mediaRecorder.start(1000)
         }
 
-        // When we receive data from Deepgram...
-        socket.onmessage = message => {
+        socket.onmessage = (message) => {
           const received = JSON.parse(message.data)
-          // See all responses in the console
-          console.log({ received })
-
-          // If there is a transcript and it's marked as is_final, add to transcript paragraph
           const transcript = received.channel.alternatives[0].transcript
           if (transcript && received.is_final) {
-            document.querySelector('#transcript').textContent += transcript + ' '
+            console.log(transcript)
+            document.querySelector('#transcript').textContent +=
+              transcript + ' '
           }
         }
 
         socket.onclose = () => {
-          console.log({ message: 'socket closed' })
+          console.log({ event: 'onclose' })
         }
 
-        socket.onerror = error => {
-          console.log({ error })
+        socket.onerror = (error) => {
+          console.log({ event: 'onerror', error })
         }
       })
     </script>
